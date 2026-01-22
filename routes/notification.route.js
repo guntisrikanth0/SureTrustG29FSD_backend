@@ -2,7 +2,7 @@ import { getNotifications, triggerLikeNotification, markAllNotificationsAsRead, 
 import express from 'express'
 import { authMiddleware } from "../utility/auth.Middleware.js";
 
-const router=exoress.Router();
+const router=express.Router();
 
 
 router.post("/like",authMiddleware,triggerLikeNotification);
