@@ -1,5 +1,8 @@
 import user from "../schemas/User.schema.js";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+
+const salt = bcrypt.genSaltSync(10);
 
 export const register = async (req, res) => {
   try {
@@ -17,7 +20,9 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "user already exist" });
     }
 
-    const userCreated = await user.create({ email, password, name });
+    const hashedPassword = bcrypt.hashSync(password, salt);
+
+    const userCreated = await user.create({ email, password:hashedPassword, name });
     if (!userCreated) {
       return res.status(400).json({ message: "user not created" });
     }
@@ -38,6 +43,13 @@ export const login = async (req, res) => {
 
     const userExist = await user.findOne({ email });
 
+    const isPasswordValid = userExist
+      ? bcrypt.compareSync(password, userExist.password)
+      : false;
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
     if (!userExist) {
       return res.status(400).json({ message: "user not exist" });
     }
@@ -45,13 +57,13 @@ export const login = async (req, res) => {
 
     const token = jwt.sign(
       { userId: userExist._id, email: user.email },
-      "infinity",
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
     res
       .status(200)
-      .json({ token, message: `${userExist.name} logged in successfully` });
+      .json({profilePic:userExist.profilePic, token, message: `${userExist.name} logged in successfully` });
   } catch (error) {
     console.error(error);
   }
@@ -68,7 +80,7 @@ export const searchUser = async (req, res) => {
     // Case-insensitive partial search
     const users = await user.find({
       name: { $regex: name, $options: "i" }
-    }).select("name email");
+    }).select("name email profilePic");
 
     if (users.length === 0) {
       return res.status(200).json({ message: "No user found", users: [] });
